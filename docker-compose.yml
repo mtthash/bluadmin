@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bluadmin-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bluadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bluadmin_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-bluadmin}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bluadmin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bluadmin-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bluadmin-api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bluadmin}:${POSTGRES_PASSWORD:-bluadmin_secret}@postgres:5432/${POSTGRES_DB:-bluadmin}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    networks:
+      - bluadmin-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: bluadmin-ui
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      VITE_AZURE_CLIENT_ID: ${VITE_AZURE_CLIENT_ID}
+      VITE_AZURE_TENANT_ID: ${VITE_AZURE_TENANT_ID}
+      VITE_AZURE_BACKEND_CLIENT_ID: ${VITE_AZURE_BACKEND_CLIENT_ID}
+      VITE_REDIRECT_URI: ${VITE_REDIRECT_URI:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - bluadmin-net
+
+volumes:
+  pgdata:
+
+networks:
+  bluadmin-net:
+    driver: bridge
