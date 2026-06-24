@@ -14,8 +14,12 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PeopleIcon from '@mui/icons-material/People';
 import HistoryIcon from '@mui/icons-material/History';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BusinessIcon from '@mui/icons-material/Business';
 import { useAuth } from '../../hooks/useAuth';
-import { hasAnyRole, canViewAudit } from '../../auth/roleGuard';
+import { hasPermission } from '../../auth/roleGuard';
+import logoBlumenau from '../../assets/logo-blumenau.png';
 
 interface SidebarProps {
   width: number;
@@ -31,7 +35,7 @@ interface NavItem {
 export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { roles } = useAuth();
+  const { permissions } = useAuth();
 
   const navItems: NavItem[] = [
     {
@@ -44,19 +48,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
       label: 'Onboarding',
       path: '/onboarding',
       icon: <PersonAddIcon />,
-      visible: hasAnyRole(roles, ['HR', 'IT', 'Admin']),
+      visible: hasPermission(permissions, 'employee:create'),
     },
     {
       label: 'Colaboradores',
       path: '/employees',
       icon: <PeopleIcon />,
-      visible: hasAnyRole(roles, ['HR', 'IT', 'Admin']),
+      visible: hasPermission(permissions, 'employee:list'),
     },
     {
-      label: 'Logs de Auditoria',
+      label: 'Departamentos',
+      path: '/departments',
+      icon: <BusinessIcon />,
+      visible: hasPermission(permissions, 'user:manage'),
+    },
+    {
+      label: 'Atividades',
       path: '/audit',
       icon: <HistoryIcon />,
-      visible: canViewAudit(roles),
+      visible: hasPermission(permissions, 'user:manage'),
+    },
+    {
+      label: 'Permissoes',
+      path: '/permissions',
+      icon: <AdminPanelSettingsIcon />,
+      visible: hasPermission(permissions, 'user:manage'),
     },
   ];
 
@@ -76,17 +92,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
           boxSizing: 'border-box',
           borderRight: '1px solid',
           borderColor: 'divider',
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography
-          variant="h5"
-          component="div"
-          sx={{ fontWeight: 700, color: 'primary.main' }}
-        >
-          BluAdmin
-        </Typography>
+      <Box sx={{ p: 2.5, textAlign: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
+          <LightbulbIcon sx={{ color: '#ffb300', fontSize: 28, filter: 'drop-shadow(0 0 6px rgba(255,179,0,0.6))' }} />
+          <Typography
+            variant="h5"
+            component="div"
+            sx={{ fontWeight: 700, color: 'primary.main' }}
+          >
+            BluAdmin
+          </Typography>
+        </Box>
         <Typography variant="caption" color="text.secondary">
           Gestao de Colaboradores
         </Typography>
@@ -94,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
 
       <Divider />
 
-      <List sx={{ px: 1, pt: 1 }}>
+      <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
         {navItems
           .filter((item) => item.visible)
           .map((item) => (
@@ -103,16 +124,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
               selected={isActive(item.path)}
               onClick={() => navigate(item.path)}
               sx={{
-                borderRadius: 1,
+                borderRadius: 2,
                 mb: 0.5,
+                transition: 'all 0.2s ease',
                 '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'primary.contrastText',
+                  backgroundColor: 'rgba(0, 168, 255, 0.15)',
+                  color: 'primary.light',
+                  boxShadow: '0 0 16px rgba(0, 168, 255, 0.2), inset 0 0 0 1px rgba(0, 168, 255, 0.3)',
                   '&:hover': {
-                    backgroundColor: 'primary.dark',
+                    backgroundColor: 'rgba(0, 168, 255, 0.2)',
                   },
                   '& .MuiListItemIcon-root': {
-                    color: 'primary.contrastText',
+                    color: 'primary.light',
                   },
                 },
               }}
@@ -122,6 +145,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
             </ListItemButton>
           ))}
       </List>
+
+      <Divider />
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+          Uma solução
+        </Typography>
+        <Box
+          component="img"
+          src={logoBlumenau}
+          alt="Blumenau Iluminação"
+          sx={{ width: '70%', maxWidth: 150 }}
+        />
+      </Box>
     </Drawer>
   );
 };

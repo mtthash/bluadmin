@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, String, Table, text
-from sqlalchemy.dialects.postgresql import TIMESTAMPTZ, UUID
+from sqlalchemy import TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,11 +39,11 @@ class Role(Base):
     )
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    azure_group_id: Mapped[str | None] = mapped_column(
+    ad_group_dn: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default=text("now()")
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
 
     # ── Relationships ────────────────────────────────────────────────────

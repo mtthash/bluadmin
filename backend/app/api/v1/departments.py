@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_permissions
-from app.schemas.department import DepartmentRead
+from app.schemas.department import DepartmentCreate, DepartmentRead
 from app.services.department_service import DepartmentService
 
 router = APIRouter()
@@ -18,6 +18,19 @@ router = APIRouter()
 async def list_departments(
     db: AsyncSession = Depends(get_db),
 ) -> list[DepartmentRead]:
-    """Return all departments."""
-    service = DepartmentService(db)
+    service = DepartmentService()
     return await service.list_departments()
+
+
+@router.post(
+    "/",
+    response_model=DepartmentRead,
+    status_code=201,
+    dependencies=[Depends(require_permissions(["user:manage"]))],
+)
+async def create_department(
+    payload: DepartmentCreate,
+    db: AsyncSession = Depends(get_db),
+) -> DepartmentRead:
+    service = DepartmentService()
+    return await service.create_department(payload)

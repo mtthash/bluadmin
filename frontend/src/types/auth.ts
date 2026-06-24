@@ -1,7 +1,8 @@
-export type AppRole = 'HR' | 'IT' | 'Admin';
+export type AppRole = 'admin' | 'viewer';
 
 export interface AuthUser {
   name: string;
   email: string;
-  roles: AppRole[];
+  role: AppRole;
+  permissions: string[];
 }

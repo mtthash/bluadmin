@@ -18,6 +18,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useEmployees } from '../hooks/useEmployees';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { canCreateEmployee } from '../auth/roleGuard';
+
 import { PageHeader } from '../components/common/PageHeader';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
@@ -63,7 +64,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, roles } = useAuth();
+  const { user, permissions } = useAuth();
   const { data: allEmployees, isLoading: loadingAll } = useEmployees(0, 1);
   const { data: activeEmployees, isLoading: loadingActive } = useEmployees(
     0,
@@ -97,7 +98,7 @@ export const DashboardPage: React.FC = () => {
             title="Total de Colaboradores"
             value={allEmployees?.total ?? 0}
             icon={<PeopleIcon />}
-            color="#1565C0"
+            color="#00a8ff"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -105,7 +106,7 @@ export const DashboardPage: React.FC = () => {
             title="Ativos"
             value={activeEmployees?.total ?? 0}
             icon={<CheckCircleIcon />}
-            color="#2E7D32"
+            color="#4caf50"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -113,7 +114,7 @@ export const DashboardPage: React.FC = () => {
             title="Desabilitados"
             value={disabledEmployees?.total ?? 0}
             icon={<BlockIcon />}
-            color="#C62828"
+            color="#ff5252"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -121,13 +122,13 @@ export const DashboardPage: React.FC = () => {
             title="Acoes Recentes"
             value={recentAudit?.total ?? 0}
             icon={<HistoryIcon />}
-            color="#00838F"
+            color="#ffb300"
           />
         </Grid>
       </Grid>
 
       <Stack direction="row" spacing={2}>
-        {canCreateEmployee(roles) && (
+        {canCreateEmployee(permissions) && (
           <Button
             variant="contained"
             startIcon={<PersonAddIcon />}

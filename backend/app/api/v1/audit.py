@@ -34,4 +34,4 @@ async def list_audit_logs(
         date_to=date_to,
     )
     service = AuditService(db)
-    return await service.list_logs(page=page, size=size, log_filter=log_filter)
+    return await service.list_logs(page=page, size=size, filters=log_filter)

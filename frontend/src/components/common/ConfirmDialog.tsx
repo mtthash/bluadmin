@@ -6,6 +6,7 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  CircularProgress,
 } from '@mui/material';
 
 interface ConfirmDialogProps {
@@ -14,9 +15,10 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmColor?: 'error' | 'warning' | 'primary';
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-  severity?: 'warning' | 'error';
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -25,23 +27,28 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
+  confirmColor = 'warning',
+  loading = false,
   onConfirm,
   onCancel,
-  severity = 'warning',
 }) => {
-  const confirmColor = severity === 'error' ? 'error' : 'warning';
-
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="sm" fullWidth>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel} color="inherit">
+        <Button onClick={onCancel} color="inherit" disabled={loading}>
           {cancelLabel}
         </Button>
-        <Button onClick={onConfirm} color={confirmColor} variant="contained">
+        <Button
+          onClick={onConfirm}
+          color={confirmColor}
+          variant="contained"
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={18} /> : undefined}
+        >
           {confirmLabel}
         </Button>
       </DialogActions>

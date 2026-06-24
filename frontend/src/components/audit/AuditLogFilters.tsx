@@ -1,107 +1,75 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  TextField,
-  Button,
-  MenuItem,
-  Stack,
-} from '@mui/material';
+import React from 'react';
+import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 import type { AuditLogFilter } from '../../types/auditLog';
 
 interface AuditLogFiltersProps {
   onApply: (filters: AuditLogFilter) => void;
   onClear: () => void;
+  liveMode?: boolean;
+  onToggleLive?: () => void;
 }
 
-const ACTION_OPTIONS = [
-  { value: '', label: 'Todas as acoes' },
-  { value: 'onboard', label: 'Onboarding' },
-  { value: 'offboard', label: 'Offboarding' },
-  { value: 'disable', label: 'Desabilitar' },
-  { value: 'enable', label: 'Habilitar' },
-  { value: 'update', label: 'Atualizar' },
+const PERIOD_OPTIONS = [
+  { label: '5 min', minutes: 5 },
+  { label: '15 min', minutes: 15 },
+  { label: '30 min', minutes: 30 },
+  { label: '1 hora', minutes: 60 },
+  { label: '6 horas', minutes: 360 },
+  { label: '24 horas', minutes: 1440 },
+  { label: '7 dias', minutes: 10080 },
+  { label: '30 dias', minutes: 43200 },
 ];
 
 export const AuditLogFilters: React.FC<AuditLogFiltersProps> = ({
   onApply,
   onClear,
+  liveMode = false,
+  onToggleLive,
 }) => {
-  const [action, setAction] = useState('');
-  const [actorEmail, setActorEmail] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-
-  const handleApply = () => {
-    const filters: AuditLogFilter = {};
-    if (action) filters.action = action;
-    if (actorEmail.trim()) filters.actor_email = actorEmail.trim();
-    if (dateFrom) filters.date_from = dateFrom;
-    if (dateTo) filters.date_to = dateTo;
-    onApply(filters);
-  };
-
-  const handleClear = () => {
-    setAction('');
-    setActorEmail('');
-    setDateFrom('');
-    setDateTo('');
-    onClear();
+  const handlePeriod = (minutes: number) => {
+    const from = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+    onApply({ date_from: from });
   };
 
   return (
     <Box sx={{ mb: 3 }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-end">
-        <TextField
-          select
-          label="Tipo de acao"
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          size="small"
-          sx={{ minWidth: 180 }}
-        >
-          {ACTION_OPTIONS.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </TextField>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+          Coletar:
+        </Typography>
+        {PERIOD_OPTIONS.map((opt) => (
+          <Chip
+            key={opt.minutes}
+            label={opt.label}
+            variant="outlined"
+            onClick={() => handlePeriod(opt.minutes)}
+            sx={{ cursor: 'pointer' }}
+          />
+        ))}
+        <Chip label="Tudo" variant="outlined" onClick={onClear} sx={{ cursor: 'pointer' }} />
 
-        <TextField
-          label="E-mail do executor"
-          value={actorEmail}
-          onChange={(e) => setActorEmail(e.target.value)}
-          size="small"
-          sx={{ minWidth: 220 }}
-        />
+        <Box sx={{ flexGrow: 1 }} />
 
-        <TextField
-          label="Data inicial"
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          size="small"
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ minWidth: 160 }}
-        />
-
-        <TextField
-          label="Data final"
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          size="small"
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ minWidth: 160 }}
-        />
-
-        <Stack direction="row" spacing={1}>
-          <Button variant="contained" onClick={handleApply} size="medium">
-            Aplicar
+        {onToggleLive && (
+          <Button
+            variant={liveMode ? 'contained' : 'outlined'}
+            color={liveMode ? 'error' : 'primary'}
+            size="small"
+            startIcon={liveMode ? <StopIcon /> : <PlayArrowIcon />}
+            onClick={onToggleLive}
+            sx={{
+              animation: liveMode ? 'pulse 2s infinite' : 'none',
+              '@keyframes pulse': {
+                '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,82,82,0.4)' },
+                '50%': { boxShadow: '0 0 12px 4px rgba(255,82,82,0.3)' },
+              },
+            }}
+          >
+            {liveMode ? 'Parar' : 'Tempo Real'}
           </Button>
-          <Button variant="outlined" onClick={handleClear} size="medium">
-            Limpar
-          </Button>
-        </Stack>
+        )}
       </Stack>
     </Box>
   );

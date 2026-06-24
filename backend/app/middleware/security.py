@@ -21,7 +21,7 @@ _CSP = (
     "script-src 'self'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
-    "connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com; "
+    "connect-src 'self'; "
     "frame-ancestors 'none'"
 )
 

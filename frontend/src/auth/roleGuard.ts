@@ -1,25 +1,31 @@
-import type { AppRole } from '../types/auth';
-
-export function hasRole(userRoles: string[], required: AppRole): boolean {
-  return userRoles.includes(required);
+export function hasPermission(permissions: string[], required: string): boolean {
+  return permissions.includes(required);
 }
 
-export function hasAnyRole(userRoles: string[], required: AppRole[]): boolean {
-  return required.some((role) => userRoles.includes(role));
+export function hasAnyPermission(permissions: string[], required: string[]): boolean {
+  return required.some((p) => permissions.includes(p));
 }
 
-export function canCreateEmployee(roles: string[]): boolean {
-  return hasAnyRole(roles, ['HR', 'IT', 'Admin']);
+export function hasAllPermissions(permissions: string[], required: string[]): boolean {
+  return required.every((p) => permissions.includes(p));
 }
 
-export function canDisableEmployee(roles: string[]): boolean {
-  return hasAnyRole(roles, ['IT', 'Admin']);
+export function canCreateEmployee(permissions: string[]): boolean {
+  return hasPermission(permissions, 'employee:create');
 }
 
-export function canViewAudit(roles: string[]): boolean {
-  return hasRole(roles, 'Admin');
+export function canDisableEmployee(permissions: string[]): boolean {
+  return hasPermission(permissions, 'employee:disable');
 }
 
-export function canManageUsers(roles: string[]): boolean {
-  return hasRole(roles, 'Admin');
+export function canViewEmployees(permissions: string[]): boolean {
+  return hasPermission(permissions, 'employee:list');
+}
+
+export function canViewAudit(permissions: string[]): boolean {
+  return hasPermission(permissions, 'audit:read');
+}
+
+export function canManageUsers(permissions: string[]): boolean {
+  return hasPermission(permissions, 'user:manage');
 }

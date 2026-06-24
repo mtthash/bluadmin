@@ -90,10 +90,10 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <Typography variant="caption" color="text.secondary">
-              ID Entra
+              Usuario AD
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {employee.entra_id}
+              {employee.ad_username}
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>

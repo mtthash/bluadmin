@@ -26,18 +26,18 @@ class UserService:
 
     async def get_or_create_local_user(
         self,
-        entra_id: str,
+        ad_username: str,
         email: str,
         display_name: str,
     ) -> User:
-        """Find a user by ``entra_id``, creating them if they don't exist.
+        """Find a user by ``ad_username``, creating them if they don't exist.
 
         If the user already exists but their ``email`` or ``display_name``
         have changed upstream, the local record is updated accordingly.
 
         Parameters
         ----------
-        entra_id:
+        ad_username:
             The Microsoft Entra object ID (``oid`` claim from the JWT).
         email:
             The user's email address.
@@ -49,7 +49,7 @@ class UserService:
         User
             The existing or newly created user record.
         """
-        stmt = select(User).where(User.entra_id == entra_id)
+        stmt = select(User).where(User.ad_username == ad_username)
         result = await self._db.execute(stmt)
         user = result.scalar_one_or_none()
 
@@ -67,7 +67,7 @@ class UserService:
                 await self._db.flush()
                 logger.info(
                     "local_user_updated",
-                    entra_id=entra_id,
+                    ad_username=ad_username,
                     email=email,
                     display_name=display_name,
                 )
@@ -75,7 +75,7 @@ class UserService:
 
         # User doesn't exist locally -- create
         user = User(
-            entra_id=entra_id,
+            ad_username=ad_username,
             email=email,
             display_name=display_name,
             user_principal_name=email,  # default UPN to email
@@ -87,7 +87,7 @@ class UserService:
         logger.info(
             "local_user_created",
             user_id=str(user.id),
-            entra_id=entra_id,
+            ad_username=ad_username,
             email=email,
         )
         return user
@@ -101,12 +101,12 @@ class UserService:
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_entra_id(self, entra_id: str) -> User | None:
+    async def get_by_ad_username(self, ad_username: str) -> User | None:
         """Look up a user by their Microsoft Entra object ID.
 
         Returns ``None`` if no matching user exists.
         """
-        stmt = select(User).where(User.entra_id == entra_id)
+        stmt = select(User).where(User.ad_username == ad_username)
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
 

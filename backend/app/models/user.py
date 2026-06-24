@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import ForeignKey, String, text
-from sqlalchemy.dialects.postgresql import TIMESTAMPTZ, UUID
+from sqlalchemy import TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -23,7 +24,7 @@ class User(Base):
     )
 
     # ── Identity (synced from Microsoft Entra ID) ────────────────────────
-    entra_id: Mapped[str] = mapped_column(
+    ad_username: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -56,16 +57,19 @@ class User(Base):
 
     # ── Timestamps ───────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default=text("now()")
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ,
+        TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text("now()"),
         onupdate=datetime.utcnow,
     )
     disabled_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMPTZ, nullable=True
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    scheduled_deletion_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
     )
 
     # ── Relationships ────────────────────────────────────────────────────
@@ -83,6 +87,7 @@ class User(Base):
     )
     roles: Mapped[list["UserRole"]] = relationship(  # noqa: F821
         "UserRole",
+        foreign_keys="UserRole.user_id",
         back_populates="user",
         lazy="selectin",
     )

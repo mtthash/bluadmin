@@ -1,6 +1,6 @@
 export interface Employee {
   id: string;
-  entra_id: string;
+  ad_username: string;
   display_name: string;
   email: string;
   user_principal_name: string;
@@ -11,6 +11,7 @@ export interface Employee {
   created_at: string;
   updated_at: string;
   disabled_at: string | null;
+  scheduled_deletion_at: string | null;
 }
 
 export interface EmployeeCreate {

@@ -1,9 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Chip, Stack } from '@mui/material';
-import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import {
+  Box,
+  Chip,
+  Stack,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { DataGrid, GridColDef, GridPaginationModel, GridRenderCellParams } from '@mui/x-data-grid';
+import BlockIcon from '@mui/icons-material/Block';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import TimerIcon from '@mui/icons-material/Timer';
 import { EmployeeStatusChip } from './EmployeeStatusChip';
-import { useEmployees } from '../../hooks/useEmployees';
+import { OffboardDialog } from './OffboardDialog';
+import { useEmployees, useOffboardEmployee } from '../../hooks/useEmployees';
+import { employeeService } from '../../services/employeeService';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Employee } from '../../types/employee';
 
 interface EmployeeTableProps {
@@ -29,6 +43,32 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function getDaysRemaining(scheduledDeletion: string | null): number | null {
+  if (!scheduledDeletion) return null;
+  const now = new Date();
+  const deletion = new Date(scheduledDeletion);
+  const diff = deletion.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function DeletionCountdown({ scheduledDeletion }: { scheduledDeletion: string | null }) {
+  const days = getDaysRemaining(scheduledDeletion);
+  if (days === null) return null;
+
+  const color = days <= 5 ? '#ff5252' : days <= 15 ? '#ffb300' : '#8899aa';
+
+  return (
+    <Tooltip title={`Exclusao definitiva em ${formatDate(scheduledDeletion!)}`}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <TimerIcon sx={{ fontSize: 16, color }} />
+        <Typography variant="caption" sx={{ color, fontWeight: 600 }}>
+          {days === 0 ? 'Hoje' : `${days}d`}
+        </Typography>
+      </Box>
+    </Tooltip>
+  );
+}
+
 export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   status,
   page,
@@ -38,7 +78,37 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   onStatusFilter,
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isLoading } = useEmployees(page, pageSize, status);
+  const offboardMutation = useOffboardEmployee();
+
+  const [offboardTarget, setOffboardTarget] = useState<Employee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleOffboard = async (retentionMinutes: number) => {
+    if (!offboardTarget) return;
+    try {
+      await offboardMutation.mutateAsync({ id: offboardTarget.id, retentionMinutes });
+      setOffboardTarget(null);
+    } catch {
+      // handled by mutation
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await employeeService.delete(deleteTarget.id);
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setDeleteTarget(null);
+    } catch {
+      // error silenced
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const columns: GridColDef<Employee>[] = [
     {
@@ -51,34 +121,69 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
       field: 'email',
       headerName: 'E-mail',
       flex: 1,
-      minWidth: 220,
-    },
-    {
-      field: 'user_principal_name',
-      headerName: 'UPN',
-      flex: 1,
-      minWidth: 220,
+      minWidth: 200,
     },
     {
       field: 'department',
       headerName: 'Departamento',
-      flex: 0.8,
-      minWidth: 150,
+      flex: 0.7,
+      minWidth: 130,
       renderCell: (params) => params.value ?? '-',
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 140,
-      renderCell: (params) => (
-        <EmployeeStatusChip status={params.value as 'active' | 'disabled'} />
+      width: 130,
+      renderCell: (params: GridRenderCellParams<Employee>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EmployeeStatusChip status={params.value as 'active' | 'disabled'} />
+          {params.value === 'disabled' && (
+            <DeletionCountdown scheduledDeletion={params.row.scheduled_deletion_at} />
+          )}
+        </Box>
       ),
     },
     {
       field: 'created_at',
       headerName: 'Criado em',
-      width: 120,
+      width: 110,
       renderCell: (params) => formatDate(params.value as string),
+    },
+    {
+      field: 'actions',
+      headerName: 'Acoes',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<Employee>) => {
+        const emp = params.row;
+        return (
+          <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+            {emp.status === 'active' && (
+              <Tooltip title="Desativar">
+                <IconButton
+                  size="small"
+                  color="warning"
+                  onClick={() => setOffboardTarget(emp)}
+                >
+                  <BlockIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {emp.status === 'disabled' && (
+              <Tooltip title="Excluir definitivamente">
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => setDeleteTarget(emp)}
+                >
+                  <DeleteForeverIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        );
+      },
     },
   ];
 
@@ -117,6 +222,25 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
           '& .MuiDataGrid-row': { cursor: 'pointer' },
           border: 'none',
         }}
+      />
+
+      <OffboardDialog
+        open={!!offboardTarget}
+        employee={offboardTarget}
+        loading={offboardMutation.isPending}
+        onConfirm={handleOffboard}
+        onCancel={() => setOffboardTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Excluir Colaborador Definitivamente"
+        message={`Tem certeza que deseja excluir ${deleteTarget?.display_name}? Esta acao removera o usuario do Active Directory e do banco de dados. Nao pode ser desfeita.`}
+        confirmLabel="Excluir Definitivamente"
+        confirmColor="error"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </Box>
   );

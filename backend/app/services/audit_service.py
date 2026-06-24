@@ -54,7 +54,7 @@ class AuditService:
             target_email=target_email,
             details=details,
             result=result,
-            error_message=error_message,
+            error_message=error_message.replace("\x00", "") if error_message else None,
             ip_address=ip_address,
         )
 

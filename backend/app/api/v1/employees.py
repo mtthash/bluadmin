@@ -71,6 +71,7 @@ async def get_employee(
 )
 async def offboard_employee(
     employee_id: uuid.UUID,
+    retention_minutes: int = Query(default=43200, ge=1, description="Minutes until permanent deletion (default 30 days)"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     ip_address: str = Depends(get_client_ip),
@@ -78,6 +79,27 @@ async def offboard_employee(
     """Offboard (disable) an existing employee."""
     service = EmployeeService(db)
     return await service.offboard(
+        employee_id=employee_id,
+        actor=current_user,
+        ip_address=ip_address,
+        retention_minutes=retention_minutes,
+    )
+
+
+@router.delete(
+    "/{employee_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permissions(["employee:disable"]))],
+)
+async def delete_employee(
+    employee_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+    ip_address: str = Depends(get_client_ip),
+) -> None:
+    """Permanently delete an employee from AD and database."""
+    service = EmployeeService(db)
+    await service.delete_employee(
         employee_id=employee_id,
         actor=current_user,
         ip_address=ip_address,

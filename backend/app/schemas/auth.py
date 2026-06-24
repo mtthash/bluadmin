@@ -7,26 +7,19 @@ import uuid
 from pydantic import BaseModel, Field
 
 
-class TokenPayload(BaseModel):
-    """Decoded claims from a Microsoft Entra ID JWT."""
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=1)
 
-    sub: str
-    oid: str
-    name: str
-    preferred_username: str
-    groups: list[str] = Field(default_factory=list)
-    aud: str
-    iss: str
-    exp: int
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 class CurrentUser(BaseModel):
-    """In-memory representation of the currently authenticated user,
-    hydrated from the JWT and the local database."""
-
     id: uuid.UUID
-    entra_id: str
-    email: str
+    username: str
     display_name: str
-    roles: list[str] = Field(default_factory=list)
+    role: str
     permissions: list[str] = Field(default_factory=list)

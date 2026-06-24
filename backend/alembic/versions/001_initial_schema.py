@@ -9,7 +9,8 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 # revision identifiers, used by Alembic.
 revision: str = "001_initial_schema"
@@ -41,7 +42,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column("entra_id", sa.String(255), nullable=False),
+        sa.Column("ad_username", sa.String(255), nullable=False),
         sa.Column("display_name", sa.String(255), nullable=False),
         sa.Column("email", sa.String(255), nullable=False),
         sa.Column("user_principal_name", sa.String(255), nullable=False),
@@ -51,11 +52,11 @@ def upgrade() -> None:
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),
         sa.Column("created_by", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("disabled_by", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("created_at", TIMESTAMPTZ, nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", TIMESTAMPTZ, nullable=False, server_default=sa.text("now()")),
-        sa.Column("disabled_at", TIMESTAMPTZ, nullable=True),
+        sa.Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column("disabled_at", TIMESTAMP(timezone=True), nullable=True),
     )
-    op.create_index("ix_users_entra_id", "users", ["entra_id"], unique=True)
+    op.create_index("ix_users_ad_username", "users", ["ad_username"], unique=True)
     op.create_index("ix_users_email", "users", ["email"], unique=True)
     op.create_index("ix_users_user_principal_name", "users", ["user_principal_name"], unique=True)
     op.create_index("ix_users_status", "users", ["status"])
@@ -66,8 +67,8 @@ def upgrade() -> None:
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column("name", sa.String(50), unique=True, nullable=False),
         sa.Column("description", sa.String(255), nullable=True),
-        sa.Column("azure_group_id", sa.String(255), unique=True, nullable=True),
-        sa.Column("created_at", TIMESTAMPTZ, nullable=False, server_default=sa.text("now()")),
+        sa.Column("ad_group_dn", sa.String(255), unique=True, nullable=True),
+        sa.Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
     )
 
     # -- permissions --
@@ -110,7 +111,7 @@ def upgrade() -> None:
             sa.ForeignKey("roles.id", ondelete="CASCADE"),
             primary_key=True,
         ),
-        sa.Column("assigned_at", TIMESTAMPTZ, nullable=False, server_default=sa.text("now()")),
+        sa.Column("assigned_at", TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("assigned_by", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
     )
 
@@ -127,7 +128,7 @@ def upgrade() -> None:
         sa.Column("result", sa.String(20), nullable=False),
         sa.Column("error_message", sa.Text, nullable=True),
         sa.Column("ip_address", sa.String(45), nullable=True),
-        sa.Column("created_at", TIMESTAMPTZ, nullable=False, server_default=sa.text("now()")),
+        sa.Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
     )
     op.create_index("ix_audit_logs_action", "audit_logs", ["action"])
     op.create_index("ix_audit_logs_created_at", "audit_logs", ["created_at"])

@@ -7,7 +7,7 @@ export const auditService = {
     size: number,
     filters?: AuditLogFilter,
   ): Promise<AuditLogList> => {
-    const params: Record<string, string | number> = { page, size };
+    const params: Record<string, string | number> = { page: Math.max(1, page + 1), size };
 
     if (filters) {
       if (filters.action) params.action = filters.action;
@@ -16,7 +16,7 @@ export const auditService = {
       if (filters.date_to) params.date_to = filters.date_to;
     }
 
-    const { data } = await api.get<AuditLogList>('/audit-logs', { params });
+    const { data } = await api.get<AuditLogList>('/audit-logs/', { params });
     return data;
   },
 };

@@ -7,6 +7,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import theme from './config/theme';
+import { GlowCursor } from './components/effects/GlowCursor';
 
 import { LoginPage } from './pages/LoginPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
@@ -16,6 +17,8 @@ import { OnboardingPage } from './pages/OnboardingPage';
 import { EmployeeListPage } from './pages/EmployeeListPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { AuditLogPage } from './pages/AuditLogPage';
+import { PlatformUsersPage } from './pages/PlatformUsersPage';
+import { DepartmentsPage } from './pages/DepartmentsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +34,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <GlowCursor />
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <Routes>
@@ -48,7 +52,7 @@ const App: React.FC = () => {
                 <Route
                   path="onboarding"
                   element={
-                    <ProtectedRoute requiredRoles={['HR', 'IT', 'Admin']}>
+                    <ProtectedRoute requiredPermissions={['employee:create']}>
                       <OnboardingPage />
                     </ProtectedRoute>
                   }
@@ -56,7 +60,7 @@ const App: React.FC = () => {
                 <Route
                   path="employees"
                   element={
-                    <ProtectedRoute requiredRoles={['HR', 'IT', 'Admin']}>
+                    <ProtectedRoute requiredPermissions={['employee:list']}>
                       <EmployeeListPage />
                     </ProtectedRoute>
                   }
@@ -64,7 +68,7 @@ const App: React.FC = () => {
                 <Route
                   path="employees/:id"
                   element={
-                    <ProtectedRoute requiredRoles={['HR', 'IT', 'Admin']}>
+                    <ProtectedRoute requiredPermissions={['employee:read']}>
                       <EmployeeDetailPage />
                     </ProtectedRoute>
                   }
@@ -72,8 +76,24 @@ const App: React.FC = () => {
                 <Route
                   path="audit"
                   element={
-                    <ProtectedRoute requiredRoles={['Admin']}>
+                    <ProtectedRoute requiredPermissions={['user:manage']}>
                       <AuditLogPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="departments"
+                  element={
+                    <ProtectedRoute requiredPermissions={['user:manage']}>
+                      <DepartmentsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="permissions"
+                  element={
+                    <ProtectedRoute requiredPermissions={['user:manage']}>
+                      <PlatformUsersPage />
                     </ProtectedRoute>
                   }
                 />

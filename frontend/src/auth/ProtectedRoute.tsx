@@ -1,45 +1,33 @@
 import React from 'react';
-import {
-  AuthenticatedTemplate,
-  UnauthenticatedTemplate,
-} from '@azure/msal-react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { hasAnyRole } from './roleGuard';
-import type { AppRole } from '../types/auth';
+import { hasAllPermissions } from './roleGuard';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: AppRole[];
+  requiredPermissions?: string[];
 }
 
-const RoleGate: React.FC<ProtectedRouteProps> = ({
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  requiredRoles,
+  requiredPermissions,
 }) => {
-  const { roles } = useAuth();
+  const { isAuthenticated, isLoading, permissions } = useAuth();
 
-  if (requiredRoles && requiredRoles.length > 0) {
-    if (!hasAnyRole(roles, requiredRoles)) {
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    if (!hasAllPermissions(permissions, requiredPermissions)) {
       return <Navigate to="/unauthorized" replace />;
     }
   }
 
   return <>{children}</>;
-};
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requiredRoles,
-}) => {
-  return (
-    <>
-      <AuthenticatedTemplate>
-        <RoleGate requiredRoles={requiredRoles}>{children}</RoleGate>
-      </AuthenticatedTemplate>
-      <UnauthenticatedTemplate>
-        <Navigate to="/login" replace />
-      </UnauthenticatedTemplate>
-    </>
-  );
 };

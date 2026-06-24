@@ -47,7 +47,7 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    entra_id: str
+    ad_username: str
     display_name: str
     email: str
     user_principal_name: str
@@ -58,6 +58,7 @@ class UserRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     disabled_at: datetime | None = None
+    scheduled_deletion_at: datetime | None = None
 
 
 class UserList(BaseModel):

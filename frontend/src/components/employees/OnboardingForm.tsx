@@ -120,13 +120,13 @@ export const OnboardingForm: React.FC = () => {
     if (step === 2) {
       if (!formData.password) {
         newErrors.password = 'Senha e obrigatoria';
-      } else if (formData.password.length < 8) {
-        newErrors.password = 'Senha deve ter pelo menos 8 caracteres';
+      } else if (formData.password.length < 12) {
+        newErrors.password = 'Senha deve ter pelo menos 12 caracteres';
       } else if (
-        !/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(formData.password)
+        !/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9])/.test(formData.password)
       ) {
         newErrors.password =
-          'Senha deve conter letras maiusculas, minusculas e numeros';
+          'Senha deve conter maiusculas, minusculas, numeros e caracteres especiais';
       }
     }
 

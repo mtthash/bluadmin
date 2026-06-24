@@ -1,8 +1,6 @@
-"""BluAdmin API -- FastAPI application entry point.
+"""BluAdmin API -- FastAPI application entry point."""
 
-Uses the lifespan pattern (ASGI 3.0) for startup/shutdown lifecycle events.
-"""
-
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -22,16 +20,26 @@ from app.middleware.security import SecurityHeadersMiddleware
 logger = structlog.stdlib.get_logger("bluadmin.main")
 
 
-# ---------------------------------------------------------------------------
-# Lifespan
-# ---------------------------------------------------------------------------
+def _bootstrap_ad_groups() -> None:
+    """Ensure BluAdmin role groups exist in Active Directory."""
+    settings = get_settings()
+    if settings.dev_auth_bypass:
+        return
+
+    try:
+        from app.integrations.ldap.groups import ensure_group_exists
+        ensure_group_exists("BluAdmin-HR", "BluAdmin - Human Resources")
+        ensure_group_exists("BluAdmin-IT", "BluAdmin - Information Technology")
+        ensure_group_exists("BluAdmin-Admin", "BluAdmin - Administrators")
+        logger.info("ad_groups_bootstrapped")
+    except Exception as exc:
+        logger.warning("ad_groups_bootstrap_failed", error=str(exc))
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage application startup and shutdown resources."""
     settings = get_settings()
 
-    # 1. Logging
     setup_logging(
         log_level=settings.log_level,
         json_output=settings.environment == "production",
@@ -42,48 +50,41 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         log_level=settings.log_level,
     )
 
-    # 2. Database
     session_manager.init(settings.database_url)
     logger.info("database_session_manager_initialised")
 
-    # 3. Role mapping (group-id -> role name)
     init_role_mapping()
     logger.info("role_mapping_initialised")
 
+    _bootstrap_ad_groups()
+
+    from app.services.deletion_scheduler import run_deletion_scheduler
+    deletion_task = asyncio.create_task(run_deletion_scheduler(check_interval=60))
+
     yield
 
-    # Shutdown
+    deletion_task.cancel()
+
     await session_manager.close()
     logger.info("application_shutdown_complete")
 
 
-# ---------------------------------------------------------------------------
-# Application factory
-# ---------------------------------------------------------------------------
-
 def create_app(settings: Settings | None = None) -> FastAPI:
-    """Build and return the fully configured FastAPI application."""
     if settings is None:
         settings = get_settings()
 
     application = FastAPI(
         title="BluAdmin API",
         version="1.0.0",
-        description="Employee management system integrated with Microsoft Entra ID",
+        description="Employee management system integrated with Active Directory",
         docs_url=settings.docs_url,
         openapi_url=settings.openapi_url,
         redoc_url="/redoc" if settings.environment != "production" else None,
         lifespan=lifespan,
     )
 
-    # ── Middleware (applied in reverse order) ─────────────────────────────
-    # 1. Structured request/response logging (outermost)
     application.add_middleware(StructuredLoggingMiddleware)
-
-    # 2. Security headers
     application.add_middleware(SecurityHeadersMiddleware)
-
-    # 3. CORS -- restrict to explicit origins only
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -93,14 +94,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
 
-    # ── Exception handlers ────────────────────────────────────────────────
     register_exception_handlers(application)
-
-    # ── Routers ───────────────────────────────────────────────────────────
     application.include_router(api_v1_router, prefix="/api/v1")
 
     return application
 
 
-# The ASGI application object used by ``uvicorn app.main:app``
 app = create_app()

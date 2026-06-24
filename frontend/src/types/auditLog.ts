@@ -4,7 +4,7 @@ export interface AuditLog {
   actor_email: string;
   target_email: string | null;
   details: Record<string, unknown> | null;
-  result: 'success' | 'failure' | 'partial';
+  result: 'success' | 'failure' | 'partial' | 'blocked';
   error_message: string | null;
   ip_address: string | null;
   created_at: string;

@@ -33,8 +33,9 @@ export function useOffboardEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => employeeService.offboard(id),
-    onSuccess: (_data, id) => {
+    mutationFn: ({ id, retentionMinutes }: { id: string; retentionMinutes?: number }) =>
+      employeeService.offboard(id, retentionMinutes),
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
     },

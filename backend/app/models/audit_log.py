@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import ForeignKey, String, Text, text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -46,7 +47,7 @@ class AuditLog(Base):
 
     # ── Timestamps ───────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, nullable=False, server_default=text("now()"), index=True
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"), index=True
     )
 
     # ── Relationships ────────────────────────────────────────────────────

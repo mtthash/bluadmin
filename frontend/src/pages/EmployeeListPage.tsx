@@ -10,7 +10,7 @@ import { canCreateEmployee } from '../auth/roleGuard';
 
 export const EmployeeListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { roles } = useAuth();
+  const { permissions } = useAuth();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [status, setStatus] = useState<string | undefined>(undefined);
@@ -22,7 +22,7 @@ export const EmployeeListPage: React.FC = () => {
         title="Colaboradores"
         subtitle="Lista de todos os colaboradores"
         action={
-          canCreateEmployee(roles) ? (
+          canCreateEmployee(permissions) ? (
             <Button
               variant="contained"
               startIcon={<PersonAddIcon />}

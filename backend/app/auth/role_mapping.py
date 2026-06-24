@@ -1,42 +1,32 @@
-"""Map Azure AD group Object IDs to application role names.
-
-The mapping is initialised once from ``Settings`` and then used at
-request time to convert the ``groups`` claim in the JWT to local roles.
-"""
+"""Map Active Directory group DNs to application role names."""
 
 from __future__ import annotations
 
 from app.config import get_settings
 
-# ── Group OID -> role name ──────────────────────────────────────────────────
-GROUP_TO_ROLE: dict[str, str] = {}
+GROUP_DN_TO_ROLE: dict[str, str] = {}
 
 
 def init_role_mapping() -> None:
-    """Populate ``GROUP_TO_ROLE`` from application settings.
+    """Build the group-DN-to-role mapping from settings.
 
-    Call this once during application startup (e.g. in a lifespan hook).
+    The group DNs are constructed from the domain's base DN.
+    Called once during application startup.
     """
     settings = get_settings()
+    base = settings.ldap_base_dn
 
-    GROUP_TO_ROLE.clear()
-    GROUP_TO_ROLE.update(
-        {
-            settings.azure_group_id_hr: "HR",
-            settings.azure_group_id_it: "IT",
-            settings.azure_group_id_admin: "Admin",
-        }
-    )
+    GROUP_DN_TO_ROLE.clear()
+    GROUP_DN_TO_ROLE.update({
+        f"CN=BluAdmin-HR,{base}": "HR",
+        f"CN=BluAdmin-IT,{base}": "IT",
+        f"CN=BluAdmin-Admin,{base}": "Admin",
+    })
 
 
-def resolve_roles_from_groups(group_ids: list[str]) -> list[str]:
-    """Convert a list of Azure AD group OIDs to application role names.
-
-    Unknown group IDs are silently ignored so that users who belong to
-    groups outside the role mapping do not cause errors.
-    """
+def resolve_roles_from_groups(group_dns: list[str]) -> list[str]:
     return [
-        GROUP_TO_ROLE[gid]
-        for gid in group_ids
-        if gid in GROUP_TO_ROLE
+        GROUP_DN_TO_ROLE[dn]
+        for dn in group_dns
+        if dn in GROUP_DN_TO_ROLE
     ]

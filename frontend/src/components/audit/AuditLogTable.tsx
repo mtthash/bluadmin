@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Chip } from '@mui/material';
-import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import { Box, Chip, Tooltip, Typography } from '@mui/material';
+import { DataGrid, GridColDef, GridPaginationModel, GridRenderCellParams } from '@mui/x-data-grid';
 import type { AuditLog, AuditLogFilter } from '../../types/auditLog';
 import { useAuditLogs } from '../../hooks/useAuditLogs';
 
@@ -11,6 +11,23 @@ interface AuditLogTableProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 }
+
+const ACTION_LABELS: Record<string, string> = {
+  'user.onboard': 'Onboarding',
+  'user.offboard': 'Desativacao',
+  'user.delete': 'Exclusao definitiva',
+  'platform_user.create': 'Novo usuario API',
+  'platform_user.update': 'Edicao usuario API',
+  'platform_user.deactivate': 'Desativacao usuario API',
+  'platform_user.protect': 'Tentativa bloqueada',
+};
+
+const RESULT_CONFIG: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'default' }> = {
+  success: { label: 'Sucesso', color: 'success' },
+  failure: { label: 'Falha', color: 'error' },
+  partial: { label: 'Parcial', color: 'warning' },
+  blocked: { label: 'Bloqueado', color: 'error' },
+};
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR', {
@@ -23,32 +40,23 @@ function formatDateTime(dateStr: string): string {
   });
 }
 
-function getResultColor(
-  result: string,
-): 'success' | 'error' | 'warning' | 'default' {
-  switch (result) {
-    case 'success':
-      return 'success';
-    case 'failure':
-      return 'error';
-    case 'partial':
-      return 'warning';
-    default:
-      return 'default';
+function formatDetails(details: Record<string, unknown> | null): string {
+  if (!details) return '';
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(details)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      if (obj.from !== undefined && obj.to !== undefined) {
+        parts.push(`${key}: ${obj.from} → ${obj.to}`);
+      } else {
+        parts.push(`${key}: ${JSON.stringify(value)}`);
+      }
+    } else {
+      parts.push(`${key}: ${value}`);
+    }
   }
-}
-
-function getResultLabel(result: string): string {
-  switch (result) {
-    case 'success':
-      return 'Sucesso';
-    case 'failure':
-      return 'Falha';
-    case 'partial':
-      return 'Parcial';
-    default:
-      return result;
-  }
+  return parts.join(' | ');
 }
 
 export const AuditLogTable: React.FC<AuditLogTableProps> = ({
@@ -64,49 +72,76 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
     {
       field: 'created_at',
       headerName: 'Data/Hora',
-      width: 180,
-      renderCell: (params) => formatDateTime(params.value as string),
+      width: 170,
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+          {formatDateTime(params.value as string)}
+        </Typography>
+      ),
     },
     {
       field: 'action',
       headerName: 'Acao',
-      width: 160,
+      width: 180,
+      renderCell: (params) => {
+        const action = params.value as string;
+        const label = ACTION_LABELS[action] || action;
+        const isProtect = action === 'platform_user.protect';
+        return (
+          <Chip
+            label={label}
+            size="small"
+            color={isProtect ? 'error' : 'default'}
+            variant={isProtect ? 'filled' : 'outlined'}
+            sx={{ fontWeight: isProtect ? 700 : 400 }}
+          />
+        );
+      },
     },
     {
       field: 'actor_email',
       headerName: 'Executado por',
-      flex: 1,
-      minWidth: 200,
+      flex: 0.7,
+      minWidth: 130,
+      renderCell: (params) => (
+        <Typography variant="body2" fontWeight={600}>
+          {params.value as string}
+        </Typography>
+      ),
     },
     {
       field: 'target_email',
       headerName: 'Alvo',
-      flex: 1,
-      minWidth: 200,
+      flex: 0.7,
+      minWidth: 130,
       renderCell: (params) => params.value ?? '-',
     },
     {
       field: 'result',
       headerName: 'Resultado',
       width: 120,
-      renderCell: (params) => (
-        <Chip
-          label={getResultLabel(params.value as string)}
-          color={getResultColor(params.value as string)}
-          size="small"
-          variant="outlined"
-        />
-      ),
+      renderCell: (params) => {
+        const r = params.value as string;
+        const cfg = RESULT_CONFIG[r] || { label: r, color: 'default' as const };
+        return <Chip label={cfg.label} color={cfg.color} size="small" variant="outlined" />;
+      },
     },
     {
       field: 'details',
       headerName: 'Detalhes',
-      flex: 0.8,
-      minWidth: 150,
-      renderCell: (params) => {
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params: GridRenderCellParams<AuditLog>) => {
         const details = params.value as Record<string, unknown> | null;
-        if (!details) return '-';
-        return JSON.stringify(details);
+        const text = formatDetails(details);
+        if (!text) return '-';
+        return (
+          <Tooltip title={text}>
+            <Typography variant="body2" noWrap sx={{ fontSize: '0.8rem' }}>
+              {text}
+            </Typography>
+          </Tooltip>
+        );
       },
     },
   ];
