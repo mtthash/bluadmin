@@ -1,224 +1,168 @@
 # BluAdmin
 
-Sistema corporativo de gerenciamento de colaboradores integrado ao Microsoft Entra ID (Azure AD).
+Sistema corporativo de gerenciamento de colaboradores integrado ao Active Directory on-premises via LDAP/LDAPS.
 
-Permite que equipes de RH e TI realizem **onboarding** e **offboarding** de colaboradores através de uma interface web, com criação automática de contas no Azure AD, atribuição de grupos/setores e auditoria completa.
+Desenvolvido para a **Blumenau Iluminacao**, permite que administradores realizem **onboarding** e **offboarding** de colaboradores atraves de uma interface web com tema dark, com criacao automatica de contas no AD, atribuicao de departamentos e auditoria completa.
 
-## Stack Tecnológico
+## Stack Tecnologico
 
 | Camada | Tecnologia |
 |--------|-----------|
 | Frontend | React 18 + TypeScript + Material UI 6 |
 | Backend | FastAPI + Python 3.12 + SQLAlchemy 2 (async) |
 | Banco de Dados | PostgreSQL 16 |
-| Autenticação | Azure Entra ID (OAuth2/OIDC via MSAL) |
-| Integração | Microsoft Graph API |
-| Containerização | Docker + Docker Compose |
+| Autenticacao | JWT local (bcrypt + python-jose) |
+| Integracao | Active Directory via LDAP/LDAPS (ldap3) |
+| Containerizacao | Docker + Docker Compose |
 
 ## Funcionalidades
 
-- **Onboarding**: Cadastro de colaborador com criação automática no Entra ID, senha temporária com troca obrigatória, atribuição a grupo/setor
-- **Offboarding**: Bloqueio de login, revogação de sessões, remoção de grupos e licenças (sem exclusão da conta)
-- **Consulta de Setores**: Carregados dinamicamente dos grupos do Azure AD via Graph API
-- **Listagem de Colaboradores**: Nome, e-mail, UPN, status, setor, data de criação
-- **Auditoria**: Registro completo de quem fez o quê, quando, para quem, com resultado
-- **RBAC**: Perfis RH, TI e Administrador com permissões granulares
+- **Onboarding**: Cadastro de colaborador com criacao automatica no AD, senha temporaria, atribuicao a departamento/grupo
+- **Offboarding**: Bloqueio de login no AD, remocao de grupos, agendamento de exclusao definitiva com prazo customizavel
+- **Exclusao agendada**: Countdown visual com remocao automatica do AD e banco apos o prazo (scheduler em background)
+- **Departamentos**: Gerenciamento de departamentos como grupos do AD, criaveis pela interface
+- **Colaboradores**: Listagem com filtros por status, detalhes, desativacao e exclusao definitiva
+- **Permissoes**: CRUD de usuarios da plataforma (admin/visualizador) com protecao do admin principal
+- **Atividades**: Log completo de acoes com filtro por periodo rapido e modo tempo real (polling 5s)
+- **Tema dark**: Interface com cores da Blumenau Iluminacao, cursor glow, loading com lampada pulsante
 
-## Pré-requisitos
+## Pre-requisitos
 
 - Docker e Docker Compose
-- Tenant do Azure AD com permissões de administrador
-- Duas App Registrations no Azure Portal (ver seção de configuração)
+- Servidor Active Directory acessivel via rede (LDAP porta 389 ou LDAPS porta 636)
+- Para definicao de senhas no onboarding: LDAPS habilitado no AD (ver secao abaixo)
 
-## Configuração do Azure AD
+## Instalacao
 
-### App Registration 1: "BluAdmin Frontend" (SPA)
-
-1. Acesse o [Azure Portal](https://portal.azure.com) > Azure Active Directory > App Registrations
-2. Crie uma nova registration com nome "BluAdmin Frontend"
-3. Plataforma: **Single-page application (SPA)**
-4. Redirect URI: `http://localhost:3000`
-5. Anote o **Application (client) ID** e o **Directory (tenant) ID**
-
-### App Registration 2: "BluAdmin Backend" (Web API)
-
-1. Crie outra registration com nome "BluAdmin Backend"
-2. Plataforma: **Web**
-3. Gere um **Client Secret** (anote o valor)
-4. Em "Expose an API":
-   - Defina o Application ID URI: `api://{client-id}`
-   - Adicione o scope: `access_as_user`
-5. Em "API Permissions" (tipo **Application**, não Delegated):
-   - `User.ReadWrite.All`
-   - `Group.ReadWrite.All`
-   - `Directory.ReadWrite.All`
-6. Conceda **Admin Consent** para as permissões acima
-7. Em "Token Configuration": adicione o claim opcional `groups` nos tokens Access e ID
-
-### Grupos do Azure AD
-
-Crie (ou identifique) os grupos para os perfis de acesso:
-- Grupo para **RH** (ex: "BluAdmin-HR")
-- Grupo para **TI** (ex: "BluAdmin-IT")
-- Grupo para **Administradores** (ex: "BluAdmin-Admin")
-
-Anote os **Object IDs** de cada grupo.
-
-## Instalação
-
-### 1. Clone o repositório
+### 1. Clone o repositorio
 
 ```bash
 git clone <url-do-repositorio>
 cd bluadmin
 ```
 
-### 2. Configure as variáveis de ambiente
+### 2. Configure as variaveis de ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` com os valores do seu tenant Azure:
+Edite o arquivo `.env`:
 
 ```env
-AZURE_TENANT_ID=seu-tenant-id
-AZURE_CLIENT_ID=client-id-do-backend
-AZURE_CLIENT_SECRET=secret-do-backend
-AZURE_FRONTEND_CLIENT_ID=client-id-do-frontend
+# Active Directory
+LDAP_SERVER=192.168.1.250
+LDAP_PORT=636
+LDAP_USE_SSL=true
+LDAP_BIND_DN=CN=admin,CN=Users,DC=seudominio,DC=local
+LDAP_BIND_PASSWORD=sua-senha
+LDAP_BASE_DN=CN=Users,DC=seudominio,DC=local
+LDAP_DOMAIN=seudominio.local
 
-AZURE_GROUP_ID_HR=object-id-do-grupo-hr
-AZURE_GROUP_ID_IT=object-id-do-grupo-it
-AZURE_GROUP_ID_ADMIN=object-id-do-grupo-admin
+# JWT (troque em producao)
+JWT_SECRET_KEY=chave-secreta-com-pelo-menos-32-caracteres
 
-POSTGRES_PASSWORD=uma-senha-forte-aqui
+# Banco
+POSTGRES_PASSWORD=uma-senha-forte
 ```
 
-### 3. Suba os containers
+### 3. Habilitar LDAPS no AD (obrigatorio para definicao de senhas)
+
+Copie o script `scripts/enable-ldaps.ps1` para o Windows Server e execute como Administrador:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\enable-ldaps.ps1
+```
+
+### 4. Suba os containers
 
 ```bash
 docker compose up --build
 ```
 
-### 4. Acesse a aplicação
+Na primeira execucao, o sistema automaticamente:
+- Roda as migrations do banco
+- Cria os grupos BluAdmin-HR, BluAdmin-IT e BluAdmin-Admin no AD
+- Cria o usuario `admin` com senha `admin` na plataforma
+
+### 5. Acesse a aplicacao
 
 - **Frontend**: http://localhost:3000
-- **Backend (Swagger)**: http://localhost:8000/api/docs
-- **Backend (Health)**: http://localhost:8000/api/v1/health
+- **API Docs (Swagger)**: http://localhost:8000/docs
+- **Login padrao**: `admin` / `admin`
+
+## Arquitetura
+
+### Autenticacao
+
+O BluAdmin possui **dois sistemas separados**:
+
+1. **Usuarios da plataforma** (tabela `platform_users`): Quem faz login no BluAdmin. Autenticacao local com bcrypt + JWT HS256.
+2. **Colaboradores** (tabela `users` + Active Directory): Pessoas gerenciadas via onboarding/offboarding. Criados/desativados no AD via LDAP.
+
+### Permissoes
+
+| Funcionalidade | Administrador | Visualizador |
+|----------------|:---:|:---:|
+| Dashboard | X | X |
+| Listar colaboradores | X | X |
+| Ver detalhes do colaborador | X | X |
+| Onboarding (criar colaborador) | X | |
+| Offboarding (desativar colaborador) | X | |
+| Excluir colaborador definitivamente | X | |
+| Gerenciar departamentos | X | |
+| Gerenciar usuarios da plataforma | X | |
+| Visualizar log de atividades | X | |
+
+O usuario `admin` possui protecao contra rebaixamento, desativacao ou remocao.
 
 ## Estrutura do Projeto
 
 ```
 bluadmin/
-├── backend/            # API FastAPI
+├── backend/
 │   ├── app/
-│   │   ├── api/        # Rotas da API v1
-│   │   ├── auth/       # Validação JWT + RBAC
-│   │   ├── core/       # Logging, exceptions
-│   │   ├── db/         # SQLAlchemy base + session
-│   │   ├── integrations/graph/  # Microsoft Graph API
-│   │   ├── middleware/  # Security headers, logging, error handler
-│   │   ├── models/     # SQLAlchemy models
-│   │   ├── schemas/    # Pydantic schemas + validators
-│   │   └── services/   # Lógica de negócio
-│   └── alembic/        # Migrations do banco
-├── frontend/           # React SPA
+│   │   ├── api/v1/          # Endpoints (auth, employees, departments, platform-users, audit)
+│   │   ├── auth/            # JWT local + permissoes
+│   │   ├── core/            # Logging, exceptions, security (bcrypt)
+│   │   ├── db/              # SQLAlchemy base + session
+│   │   ├── integrations/ldap/  # Conexao, usuarios e grupos do AD
+│   │   ├── middleware/      # Security headers, logging, error handler
+│   │   ├── models/          # User, PlatformUser, AuditLog, Role, Permission
+│   │   ├── schemas/         # Pydantic schemas + validators
+│   │   └── services/        # Employee, PlatformUser, Department, Audit, DeletionScheduler
+│   └── alembic/             # Migrations do banco
+├── frontend/
 │   └── src/
-│       ├── auth/       # MSAL provider + protected routes
-│       ├── components/ # Componentes reutilizáveis
-│       ├── hooks/      # React Query hooks
-│       ├── pages/      # Páginas da aplicação
-│       ├── services/   # Chamadas à API
-│       └── types/      # TypeScript types
+│       ├── auth/            # AuthProvider (JWT), ProtectedRoute, roleGuard
+│       ├── assets/          # Logo Blumenau Iluminacao
+│       ├── components/      # Layout, employees, audit, effects (GlowCursor)
+│       ├── hooks/           # React Query hooks
+│       ├── pages/           # Dashboard, Employees, Onboarding, Departments, Permissions, Audit
+│       ├── services/        # Chamadas a API (axios)
+│       └── config/          # Theme dark, API config
+├── scripts/
+│   └── enable-ldaps.ps1     # Script para habilitar LDAPS no Windows Server
 └── docker-compose.yml
 ```
 
-## Segurança
+## Seguranca
 
-O projeto implementa proteções contra todas as vulnerabilidades do OWASP Top 10:
-
-- **SQL Injection**: SQLAlchemy ORM exclusivo, zero SQL raw
-- **XSS**: React auto-escape + CSP headers rigorosos + validação Pydantic com regex
-- **CSRF**: Bearer token via header (sem cookies de sessão)
-- **Broken Auth**: JWT RS256 validado em toda request, JWKS rotation automática
-- **Data Exposure**: Senhas nunca em logs/DB local, HSTS em produção
-- **Broken Access Control**: RBAC granular em todas as rotas + rate limiting
-- **Security Headers**: CSP, X-Frame-Options DENY, nosniff, HSTS, Permissions-Policy
-- **Logging**: Auditoria completa sem PII nos logs, dados sensíveis filtrados
-
-## Permissões RBAC
-
-| Ação | RH | TI | Admin |
-|------|:--:|:--:|:-----:|
-| Criar colaborador | X | X | X |
-| Consultar colaborador | X | X | X |
-| Listar colaboradores | X | X | X |
-| Desabilitar colaborador | | X | X |
-| Consultar setores | X | X | X |
-| Visualizar auditoria | | | X |
-| Gerenciar usuários | | | X |
-
-## Deploy em Produção (Linux)
-
-### 1. Servidor
-
-- Ubuntu 22.04+ ou similar
-- Docker e Docker Compose instalados
-- Domínio configurado com certificado SSL (Let's Encrypt / Certbot)
-
-### 2. Variáveis de ambiente
-
-```bash
-# Ajuste para produção
-ENVIRONMENT=production
-CORS_ORIGINS=["https://seu-dominio.com"]
-POSTGRES_PASSWORD=senha-muito-forte-gerada-aleatoriamente
-VITE_API_BASE_URL=https://seu-dominio.com/api/v1
-VITE_REDIRECT_URI=https://seu-dominio.com
-```
-
-### 3. Build de produção
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-```
-
-### 4. Nginx reverso (host)
-
-Configure um Nginx no host para terminar SSL e fazer proxy para os containers:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name seu-dominio.com;
-
-    ssl_certificate /etc/letsencrypt/live/seu-dominio.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/seu-dominio.com/privkey.pem;
-
-    location / {
-        proxy_pass http://localhost:3000;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:8000;
-    }
-}
-```
-
-### 5. Atualize as App Registrations
-
-- Redirect URI do frontend: `https://seu-dominio.com`
-- CORS origins: `https://seu-dominio.com`
+- **Senhas**: Bcrypt hash para usuarios da plataforma, LDAPS para senhas do AD
+- **JWT**: HS256 com expiracao de 8 horas, validacao em toda request
+- **RBAC**: Permissoes granulares verificadas no backend e frontend
+- **SQL Injection**: SQLAlchemy ORM exclusivo
+- **XSS**: React auto-escape + CSP headers + validacao Pydantic com regex
+- **CSRF**: Bearer token via header (sem cookies de sessao)
+- **Security Headers**: CSP, X-Frame-Options DENY, nosniff, HSTS
+- **Protecao admin**: Impossivel rebaixar/desativar/remover o administrador principal
+- **Auditoria**: Registro completo de todas as acoes incluindo tentativas bloqueadas
 
 ## Melhorias Futuras
 
-- **Notificações por e-mail**: Enviar credenciais ao gestor via Microsoft Graph Send Mail
-- **Importação em lote**: Upload de CSV para onboarding de múltiplos colaboradores
-- **Dashboard avançado**: Gráficos com histórico de onboarding/offboarding
-- **Integração com Teams**: Notificar canais sobre novos colaboradores
-- **Backup de conta**: Exportar dados do usuário antes do offboarding (OneDrive, Mailbox)
-- **Workflow de aprovação**: Fluxo de aprovação multi-nível para onboarding
-- **MFA enforcement**: Forçar MFA para novos usuários via Conditional Access Policy
-- **Relatórios**: Exportação de relatórios de auditoria em PDF/Excel
-- **Testes automatizados**: Suite completa de testes unitários e de integração
-- **CI/CD**: Pipeline GitHub Actions para build, test e deploy automático
+- Notificacoes por e-mail ao gestor com credenciais do novo colaborador
+- Importacao em lote via CSV para onboarding multiplo
+- Dashboard com graficos de historico
+- Exportacao de relatorios de auditoria em PDF/Excel
+- Testes automatizados (unitarios e integracao)
+- CI/CD pipeline
