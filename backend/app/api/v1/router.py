@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    audit, auth, dashboard, departments, employees, folder_mappings, health, platform_users, users,
+    audit, auth, dashboard, departments, employees, folder_mappings, health, platform_users, policies, users,
 )
 
 api_v1_router = APIRouter()
@@ -21,3 +21,4 @@ api_v1_router.include_router(
     platform_users.router, prefix="/platform-users", tags=["Platform Users"]
 )
 api_v1_router.include_router(folder_mappings.router)
+api_v1_router.include_router(policies.router, prefix="/policies", tags=["Policies"])

@@ -36,7 +36,10 @@ import { PageHeader } from '../components/common/PageHeader';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 const CHART_COLORS = ['#00a8ff', '#4caf50', '#ff5252', '#ffb300', '#ab47bc', '#26c6da', '#ff7043', '#66bb6a'];
-const PIE_COLORS = ['#4caf50', '#ff5252', '#ffb300'];
+const STATUS_COLORS: Record<string, string> = {
+  'Ativos': '#4caf50',
+  'Desabilitados': '#ff5252',
+};
 
 interface SummaryCardProps {
   title: string;
@@ -188,8 +191,8 @@ export const DashboardPage: React.FC = () => {
                       paddingAngle={3}
                       label={({ status, count }) => `${status}: ${count}`}
                     >
-                      {stats.status_counts.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      {stats.status_counts.map((entry, i) => (
+                        <Cell key={i} fill={STATUS_COLORS[entry.status] ?? '#ffb300'} />
                       ))}
                     </Pie>
                     <Tooltip

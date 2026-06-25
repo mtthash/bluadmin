@@ -19,6 +19,7 @@ import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { PlatformUsersPage } from './pages/PlatformUsersPage';
 import { DepartmentsPage } from './pages/DepartmentsPage';
+import { PoliciesPage } from './pages/PoliciesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,14 @@ const App: React.FC = () => {
                   element={
                     <ProtectedRoute requiredPermissions={['user:manage']}>
                       <DepartmentsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="policies"
+                  element={
+                    <ProtectedRoute requiredPermissions={['user:manage']}>
+                      <PoliciesPage />
                     </ProtectedRoute>
                   }
                 />

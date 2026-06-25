@@ -17,6 +17,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BusinessIcon from '@mui/icons-material/Business';
+import PolicyIcon from '@mui/icons-material/Policy';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/roleGuard';
 import logoBlumenau from '../../assets/logo-blumenau.png';
@@ -60,6 +61,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ width }) => {
       label: 'Departamentos',
       path: '/departments',
       icon: <BusinessIcon />,
+      visible: hasPermission(permissions, 'user:manage'),
+    },
+    {
+      label: 'Politicas (GPO)',
+      path: '/policies',
+      icon: <PolicyIcon />,
       visible: hasPermission(permissions, 'user:manage'),
     },
     {
