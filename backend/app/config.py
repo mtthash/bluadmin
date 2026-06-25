@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 480
 
+    # ── File Share ─────────────────────────────────────────────────────────
+    file_share_server: str = "192.168.1.250"
+    file_share_name: str = "Departamentos"
+    file_share_default_drive: str = "X:"
+    folder_mapping_api_key: str = "bluadmin-drive-map"
+
     # ── Application ───────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000"]
     log_level: str = "INFO"
@@ -63,6 +69,10 @@ class Settings(BaseSettings):
         if not v:
             raise ValueError("database_url must not be empty")
         return v
+
+    @property
+    def file_share_unc(self) -> str:
+        return f"\\\\{self.file_share_server}\\{self.file_share_name}"
 
     @property
     def docs_url(self) -> str | None:

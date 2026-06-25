@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -7,18 +7,41 @@ import {
   IconButton,
   Tooltip,
   Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Alert,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel, GridRenderCellParams } from '@mui/x-data-grid';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import FolderIcon from '@mui/icons-material/Folder';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import TimerIcon from '@mui/icons-material/Timer';
 import { EmployeeStatusChip } from './EmployeeStatusChip';
 import { OffboardDialog } from './OffboardDialog';
 import { useEmployees, useOffboardEmployee } from '../../hooks/useEmployees';
 import { employeeService } from '../../services/employeeService';
+import { folderMappingService } from '../../services/folderMappingService';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Employee } from '../../types/employee';
+import type { FolderMapping } from '../../types/folderMapping';
 
 interface EmployeeTableProps {
   status?: string;
@@ -86,6 +109,92 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuEmployee, setMenuEmployee] = useState<Employee | null>(null);
+
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [folderEmployee, setFolderEmployee] = useState<Employee | null>(null);
+  const [mappings, setMappings] = useState<FolderMapping[]>([]);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [driveLetter, setDriveLetter] = useState('');
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [folderSaving, setFolderSaving] = useState(false);
+
+  const fetchMappings = async (employeeId: string) => {
+    try {
+      const data = await folderMappingService.list(employeeId);
+      setMappings(data);
+    } catch {
+      setMappings([]);
+    }
+  };
+
+  useEffect(() => {
+    if (folderEmployee) {
+      fetchMappings(folderEmployee.id);
+    }
+  }, [folderEmployee]);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, emp: Employee) => {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+    setMenuEmployee(emp);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setMenuEmployee(null);
+  };
+
+  const handleOpenFolders = () => {
+    setFolderEmployee(menuEmployee);
+    setFolderDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleOffboardFromMenu = () => {
+    setOffboardTarget(menuEmployee);
+    handleMenuClose();
+  };
+
+  const handleDeleteFromMenu = () => {
+    setDeleteTarget(menuEmployee);
+    handleMenuClose();
+  };
+
+  const handleAddMapping = async () => {
+    if (!folderEmployee || !folderName.trim() || !driveLetter.trim()) return;
+    setFolderSaving(true);
+    setFolderError(null);
+    try {
+      await folderMappingService.create(folderEmployee.id, {
+        folder_name: folderName.trim(),
+        drive_letter: driveLetter.trim().toUpperCase(),
+      });
+      setAddDialogOpen(false);
+      setFolderName('');
+      setDriveLetter('');
+      fetchMappings(folderEmployee.id);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || (err instanceof Error ? err.message : 'Erro ao adicionar mapeamento');
+      setFolderError(msg);
+    } finally {
+      setFolderSaving(false);
+    }
+  };
+
+  const handleRemoveMapping = async (mappingId: string) => {
+    if (!folderEmployee) return;
+    try {
+      await folderMappingService.remove(folderEmployee.id, mappingId);
+      fetchMappings(folderEmployee.id);
+    } catch {
+      // silently fail
+    }
+  };
+
   const handleOffboard = async (retentionMinutes: number) => {
     if (!offboardTarget) return;
     try {
@@ -152,38 +261,16 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     {
       field: 'actions',
       headerName: 'Acoes',
-      width: 100,
+      width: 60,
       sortable: false,
       filterable: false,
-      renderCell: (params: GridRenderCellParams<Employee>) => {
-        const emp = params.row;
-        return (
-          <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
-            {emp.status === 'active' && (
-              <Tooltip title="Desativar">
-                <IconButton
-                  size="small"
-                  color="warning"
-                  onClick={() => setOffboardTarget(emp)}
-                >
-                  <BlockIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
-            {emp.status === 'disabled' && (
-              <Tooltip title="Excluir definitivamente">
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => setDeleteTarget(emp)}
-                >
-                  <DeleteForeverIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
-          </Box>
-        );
-      },
+      renderCell: (params: GridRenderCellParams<Employee>) => (
+        <Box onClick={(e) => e.stopPropagation()}>
+          <IconButton size="small" onClick={(e) => handleMenuOpen(e, params.row)}>
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
     },
   ];
 
@@ -223,6 +310,148 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
           border: 'none',
         }}
       />
+
+      {/* Menu dropdown de acoes */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={handleOpenFolders}>
+          <ListItemIcon><FolderIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Pastas Mapeadas</ListItemText>
+        </MenuItem>
+        {menuEmployee?.status === 'active' && (
+          <MenuItem onClick={handleOffboardFromMenu}>
+            <ListItemIcon><BlockIcon fontSize="small" color="warning" /></ListItemIcon>
+            <ListItemText>Desativar</ListItemText>
+          </MenuItem>
+        )}
+        {menuEmployee?.status === 'disabled' && (
+          <MenuItem onClick={handleDeleteFromMenu}>
+            <ListItemIcon><DeleteForeverIcon fontSize="small" color="error" /></ListItemIcon>
+            <ListItemText>Excluir Definitivamente</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
+
+      {/* Dialog de pastas mapeadas */}
+      <Dialog
+        open={folderDialogOpen}
+        onClose={() => { setFolderDialogOpen(false); setFolderEmployee(null); }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FolderIcon color="primary" />
+            Pastas Mapeadas — {folderEmployee?.display_name}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {mappings.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Nenhuma pasta mapeada para este colaborador.
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Drive</TableCell>
+                    <TableCell>Pasta</TableCell>
+                    <TableCell>Caminho UNC</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell align="right">Acao</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {mappings.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell>
+                        <Typography fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                          {m.drive_letter}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{m.folder_name}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                          {m.unc_path}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={m.is_default ? 'Padrao' : 'Manual'}
+                          size="small"
+                          color={m.is_default ? 'primary' : 'default'}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" color="error" onClick={() => handleRemoveMapping(m.id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            startIcon={<AddIcon />}
+            onClick={() => { setFolderError(null); setAddDialogOpen(true); }}
+          >
+            Adicionar Mapeamento
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => { setFolderDialogOpen(false); setFolderEmployee(null); }}
+          >
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de adicionar mapeamento */}
+      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Adicionar Mapeamento de Pasta</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {folderError && <Alert severity="error">{folderError}</Alert>}
+            <TextField
+              label="Nome da Pasta"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              fullWidth
+              autoFocus
+              placeholder="Ex: TI, Financeiro, Diretoria"
+            />
+            <TextField
+              label="Letra do Drive"
+              value={driveLetter}
+              onChange={(e) => setDriveLetter(e.target.value)}
+              fullWidth
+              placeholder="Ex: Y:"
+              inputProps={{ maxLength: 3 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddDialogOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleAddMapping}
+            disabled={!folderName.trim() || !driveLetter.trim() || folderSaving}
+          >
+            {folderSaving ? 'Adicionando...' : 'Adicionar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <OffboardDialog
         open={!!offboardTarget}

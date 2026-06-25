@@ -1,55 +1,81 @@
-"""Service layer for department (AD group) operations."""
+"""Service layer for department operations — DB-primary, LDAP-optional."""
 
 from __future__ import annotations
 
 import asyncio
 
 import structlog
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations.ldap.groups import ensure_group_exists, list_groups
+from app.core.exceptions import DuplicateDepartmentError
+from app.models.department import Department
 from app.schemas.department import DepartmentCreate, DepartmentRead
 
 logger = structlog.get_logger(__name__)
 
 
-_AD_BUILTIN_GROUPS = {
-    "Domain Computers", "Domain Controllers", "Schema Admins",
-    "Enterprise Admins", "Cert Publishers", "Domain Admins",
-    "Domain Users", "Domain Guests", "Group Policy Creator Owners",
-    "RAS and IAS Servers", "Allowed RODC Password Replication Group",
-    "Denied RODC Password Replication Group", "Read-only Domain Controllers",
-    "Enterprise Read-only Domain Controllers", "Cloneable Domain Controllers",
-    "Protected Users", "Key Admins", "Enterprise Key Admins",
-    "DnsAdmins", "DnsUpdateProxy",
-}
-
-
 class DepartmentService:
-    async def list_departments(self) -> list[DepartmentRead]:
-        groups = await asyncio.to_thread(list_groups)
+    def __init__(self, db: AsyncSession) -> None:
+        self._db = db
 
-        departments = [
-            DepartmentRead(
-                id=group["dn"],
-                display_name=group["cn"],
-                description=group.get("description"),
-                mail=group.get("mail"),
-            )
-            for group in groups
-            if group["cn"] not in _AD_BUILTIN_GROUPS
-            and not group["cn"].startswith("BluAdmin-")
-        ]
+    async def list_departments(self) -> list[DepartmentRead]:
+        stmt = select(Department).order_by(Department.name)
+        result = await self._db.execute(stmt)
+        departments = result.scalars().all()
 
         logger.info("departments_listed", count=len(departments))
-        return departments
+        return [
+            DepartmentRead(
+                id=str(dept.id),
+                display_name=dept.name,
+                description=dept.description,
+                mail=dept.mail,
+            )
+            for dept in departments
+        ]
 
     async def create_department(self, payload: DepartmentCreate) -> DepartmentRead:
-        dn = await asyncio.to_thread(
-            ensure_group_exists, payload.name, payload.description
-        )
-        logger.info("department_created", name=payload.name, dn=dn)
-        return DepartmentRead(
-            id=dn,
-            display_name=payload.name,
+        department = Department(
+            name=payload.name,
             description=payload.description,
         )
+
+        ad_group_dn = await self._try_ldap_sync(payload.name, payload.description)
+        if ad_group_dn:
+            department.ad_group_dn = ad_group_dn
+
+        self._db.add(department)
+        try:
+            await self._db.flush()
+        except IntegrityError:
+            await self._db.rollback()
+            raise DuplicateDepartmentError(payload.name)
+
+        await self._try_create_folder(payload.name)
+
+        logger.info("department_created", department_id=str(department.id), name=payload.name)
+        return DepartmentRead(
+            id=str(department.id),
+            display_name=department.name,
+            description=department.description,
+            mail=department.mail,
+        )
+
+    async def _try_create_folder(self, name: str) -> None:
+        try:
+            from app.integrations.fileshare.folders import create_department_folder
+            await asyncio.to_thread(create_department_folder, name)
+        except Exception as exc:
+            logger.warning("department_folder_creation_skipped", name=name, error=str(exc))
+
+    async def _try_ldap_sync(self, name: str, description: str | None) -> str | None:
+        try:
+            from app.integrations.ldap.groups import ensure_group_exists
+            dn = await asyncio.to_thread(ensure_group_exists, name, description)
+            logger.info("department_ldap_synced", name=name, dn=dn)
+            return dn
+        except Exception as exc:
+            logger.warning("department_ldap_sync_skipped", name=name, error=str(exc))
+            return None

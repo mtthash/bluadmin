@@ -51,3 +51,12 @@ class DuplicateEmployeeError(BluAdminError):
         detail: Any = None,
     ) -> None:
         super().__init__(message=message, status_code=409, detail=detail)
+
+
+class DuplicateDepartmentError(BluAdminError):
+    def __init__(self, name: str) -> None:
+        super().__init__(
+            message=f"Já existe um departamento com o nome '{name}'",
+            status_code=409,
+            detail={"name": name},
+        )

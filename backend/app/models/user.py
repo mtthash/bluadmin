@@ -41,6 +41,18 @@ class User(Base):
     department_group_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    department_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    department_rel: Mapped["Department | None"] = relationship(  # noqa: F821
+        "Department",
+        foreign_keys=[department_id],
+        lazy="selectin",
+    )
 
     # ── Status ───────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(

@@ -25,6 +25,7 @@ dependencies = [
     "structlog>=24.4.0",
     "python-multipart>=0.0.18",
     "slowapi>=0.1.9",
+    "pywinrm>=0.4.0",
 ]
 
 [project.optional-dependencies]

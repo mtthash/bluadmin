@@ -75,7 +75,7 @@ export const DepartmentsPage: React.FC = () => {
     <Box>
       <PageHeader
         title="Departamentos"
-        subtitle="Grupos do Active Directory usados como departamentos"
+        subtitle="Gerencie os departamentos da organização"
         action={
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setError(null); setDialogOpen(true); }}>
             Novo Departamento
@@ -90,7 +90,7 @@ export const DepartmentsPage: React.FC = () => {
             Nenhum departamento cadastrado
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Crie departamentos para organizar os colaboradores no Active Directory
+            Crie departamentos para organizar os colaboradores
           </Typography>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
             Criar Primeiro Departamento
@@ -103,7 +103,6 @@ export const DepartmentsPage: React.FC = () => {
               <TableRow>
                 <TableCell>Nome</TableCell>
                 <TableCell>Descricao</TableCell>
-                <TableCell>DN no Active Directory</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -115,11 +114,6 @@ export const DepartmentsPage: React.FC = () => {
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
                       {dept.description || '—'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                      {dept.id}
                     </Typography>
                   </TableCell>
                 </TableRow>

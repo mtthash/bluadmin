@@ -18,7 +18,7 @@ router = APIRouter()
 async def list_departments(
     db: AsyncSession = Depends(get_db),
 ) -> list[DepartmentRead]:
-    service = DepartmentService()
+    service = DepartmentService(db)
     return await service.list_departments()
 
 
@@ -32,5 +32,5 @@ async def create_department(
     payload: DepartmentCreate,
     db: AsyncSession = Depends(get_db),
 ) -> DepartmentRead:
-    service = DepartmentService()
+    service = DepartmentService(db)
     return await service.create_department(payload)

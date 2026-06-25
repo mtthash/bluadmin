@@ -20,7 +20,6 @@ import {
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useOnboardEmployee } from '../../hooks/useEmployees';
 import { DepartmentSelect } from '../departments/DepartmentSelect';
 import { ErrorAlert } from '../common/ErrorAlert';
@@ -77,8 +76,6 @@ export const OnboardingForm: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     first_name: '',
@@ -159,20 +156,9 @@ export const OnboardingForm: React.FC = () => {
 
     try {
       const result = await onboardMutation.mutateAsync(payload);
-      setTemporaryPassword(result.temporary_password);
       setSuccessDialogOpen(true);
     } catch {
       // Error handled by mutation state
-    }
-  };
-
-  const handleCopyPassword = async () => {
-    try {
-      await navigator.clipboard.writeText(temporaryPassword);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard API not available
     }
   };
 
@@ -432,35 +418,8 @@ export const OnboardingForm: React.FC = () => {
       >
         <DialogTitle>Colaborador criado com sucesso!</DialogTitle>
         <DialogContent>
-          <Alert severity="success" sx={{ mb: 2 }}>
+          <Alert severity="success">
             O colaborador foi criado e configurado com sucesso.
-          </Alert>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Senha temporaria:
-          </Typography>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              p: 2,
-              bgcolor: 'grey.100',
-              borderRadius: 1,
-              fontFamily: 'monospace',
-            }}
-          >
-            <Typography variant="body1" sx={{ flexGrow: 1, fontFamily: 'monospace' }}>
-              {temporaryPassword}
-            </Typography>
-            <Tooltip title={copied ? 'Copiado!' : 'Copiar'}>
-              <IconButton onClick={handleCopyPassword} size="small">
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Anote esta senha. Ela nao sera exibida novamente. O colaborador
-            devera altera-la no primeiro acesso.
           </Alert>
         </DialogContent>
         <DialogActions>

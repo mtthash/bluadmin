@@ -47,9 +47,19 @@ def create_ldap_user(
     try:
         success = conn.add(dn, attributes=attributes)
         if not success:
-            raise LDAPOperationError("create_user", conn.result.get("description", "Unknown error"))
+            desc = conn.result.get("description", "Unknown error")
+            if "entryAlreadyExists" in str(conn.result):
+                logger.info("ldap_user_already_exists", dn=dn)
+                existing = search_user(sam_account_name)
+                return {
+                    "dn": existing["dn"] if existing else dn,
+                    "sAMAccountName": sam_account_name,
+                    "userPrincipalName": upn,
+                    "displayName": display_name,
+                    "password_set": False,
+                }
+            raise LDAPOperationError("create_user", desc)
 
-        # Try to set password (requires LDAPS)
         password_set = False
         if settings.ldap_use_ssl:
             try:
@@ -76,6 +86,17 @@ def create_ldap_user(
     except LDAPOperationError:
         raise
     except Exception as exc:
+        if "entryAlreadyExists" in str(exc) or "ENTRY_EXISTS" in str(exc):
+            logger.info("ldap_user_already_exists", dn=dn)
+            conn.unbind()
+            existing = search_user(sam_account_name)
+            return {
+                "dn": existing["dn"] if existing else dn,
+                "sAMAccountName": sam_account_name,
+                "userPrincipalName": upn,
+                "displayName": display_name,
+                "password_set": False,
+            }
         raise LDAPOperationError("create_user", str(exc)) from exc
     finally:
         conn.unbind()

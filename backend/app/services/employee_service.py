@@ -62,12 +62,30 @@ class EmployeeService:
 
             user_dn = ldap_user["dn"]
 
+            dept_id = None
+            ad_group_dn = None
             if payload.department_group_id:
-                await asyncio.to_thread(
-                    add_group_member,
-                    group_dn=payload.department_group_id,
-                    user_dn=user_dn,
-                )
+                try:
+                    dept_id = uuid.UUID(payload.department_group_id)
+                    from app.models.department import Department
+                    from sqlalchemy import select
+                    dept = (await self._db.execute(
+                        select(Department).where(Department.id == dept_id)
+                    )).scalar_one_or_none()
+                    if dept and dept.ad_group_dn:
+                        ad_group_dn = dept.ad_group_dn
+                except ValueError:
+                    ad_group_dn = payload.department_group_id
+
+            if ad_group_dn:
+                try:
+                    await asyncio.to_thread(
+                        add_group_member,
+                        group_dn=ad_group_dn,
+                        user_dn=user_dn,
+                    )
+                except LDAPOperationError as exc:
+                    logger.warning("ldap_group_add_failed", group_dn=ad_group_dn, error=str(exc))
 
             local_user = User(
                 ad_username=payload.mail_nickname,
@@ -77,11 +95,19 @@ class EmployeeService:
                 job_title=payload.job_title,
                 department=payload.department_name,
                 department_group_id=payload.department_group_id,
+                department_id=dept_id,
                 status="active",
                 created_by=None,
             )
             self._db.add(local_user)
             await self._db.flush()
+
+            if payload.department_name:
+                from app.services.folder_mapping_service import FolderMappingService
+                folder_service = FolderMappingService(self._db)
+                await folder_service.create_default_mapping(
+                    local_user.id, payload.department_name
+                )
 
             await self._audit_service.log(
                 action="user.onboard",
