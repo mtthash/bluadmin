@@ -2,7 +2,7 @@
 
 Sistema corporativo de gerenciamento de colaboradores integrado ao Active Directory on-premises via LDAP/LDAPS.
 
-Desenvolvido para a **Blumenau Iluminacao**, permite que administradores realizem **onboarding** e **offboarding** de colaboradores atraves de uma interface web com tema dark, com criacao automatica de contas no AD, gerenciamento de departamentos com persistencia local, servidor de arquivos com pastas por departamento e auditoria completa.
+Desenvolvido para **ESTUDOS**, permite que administradores realizem **onboarding** e **offboarding** de colaboradores atraves de uma interface web com tema dark, com criacao automatica de contas no AD, gerenciamento de departamentos com persistencia local, servidor de arquivos com pastas por departamento e auditoria completa.
 
 ## Stack Tecnologico
 
